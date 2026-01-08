@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+import os, sys, time, re, random, subprocess, urllib.request
+from pathlib import Path
+
+# Config
+DIR = Path.home() / ".config/omarchy/current/theme/backgrounds"
+HIST = DIR.parent / ".used_wallpapers"
+URL = "https://4kwallpapers.com"
+BASE = f"{URL}/pitch-black-wallpapers/"
+LINK = Path.home() / ".config/omarchy/current/background"
+
+def refill():
+    DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        used = set(HIST.read_text().split()) if HIST.exists() else set()
+        downloaded, page, scanned = 0, random.randint(1, 25), 0
+        while downloaded < 5 and scanned < 5:
+            req = urllib.request.Request(f"{BASE}?page={page}" if page > 1 else BASE, headers={'User-Agent': 'Mozilla/5.0'})
+            try:
+                with urllib.request.urlopen(req) as r:
+                    html = r.read().decode('utf-8')
+                links = re.findall(r'href="(/images/wallpapers/[^"]+-\d+\.(?:png|jpg|jpeg))"', html)
+                for path in links:
+                    img_id = re.search(r'-(\d+)\.', path).group(1)
+                    if img_id not in used and downloaded < 5:
+                        f = DIR / f"{time.time_ns()}-{Path(path).name}"
+                        tmp = f.with_suffix(f.suffix + ".part")
+                        try:
+                            urllib.request.urlretrieve(URL + path, tmp)
+                            tmp.rename(f)
+                            with open(HIST, 'a') as h: h.write(f"{img_id}\n")
+                            downloaded += 1
+                            time.sleep(0.5)
+                        except: tmp.unlink(missing_ok=True)
+            except: pass
+            page, scanned = (page % 25) + 1, scanned + 1
+
+        files = sorted([f for f in DIR.glob("*") if f.suffix in ['.jpg', '.png'] and not f.name.endswith('.part')])
+        if len(files) > 15:
+            current = LINK.resolve() if LINK.exists() else None
+            for f in files[:-10]:
+                if f != current: f.unlink()
+    except: pass
+
+def apply():
+    if os.fork() == 0:
+        refill()
+        sys.exit()
+
+    old = LINK.resolve() if LINK.exists() else None
+    for _ in range(30):
+        files = sorted([f for f in DIR.glob("*") if f.suffix in ['.jpg', '.png'] and not f.name.endswith('.part')])
+        next_img = None
+        for f in files:
+            if f.resolve() != old:
+                next_img = f
+                break
+        
+        if next_img:
+            LINK.unlink(missing_ok=True)
+            LINK.symlink_to(next_img)
+            subprocess.run(["pkill", "-x", "swaybg"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            time.sleep(0.2)
+            cmd = ["uwsm-app", "--", "swaybg", "-i", str(LINK), "-m", "fill"] if subprocess.run(["command", "-v", "uwsm-app"], shell=True, stdout=subprocess.DEVNULL).returncode == 0 else ["swaybg", "-i", str(LINK), "-m", "fill"]
+            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            if old and old.exists() and old != next_img.resolve(): old.unlink()
+            return
+        time.sleep(2)
+
+if __name__ == "__main__":
+    apply()

@@ -1,48 +1,75 @@
 #!/bin/bash
 
 # Cycles through the background images available
+# Automatically downloads new wallpapers if needed
 
 BACKGROUNDS_DIR="$HOME/.config/omarchy/current/theme/backgrounds/"
 CURRENT_BACKGROUND_LINK="$HOME/.config/omarchy/current/background"
+WALLPAPER_SCRIPT="$(dirname "$0")/omarchy-dynamic-wallpaper"  # Path to your wallpaper downloader
+MIN_WALLPAPERS=10  # Minimum number of wallpapers to maintain
 
-mapfile -d '' -t BACKGROUNDS < <(find -L "$BACKGROUNDS_DIR" -type f -print0 | sort -z)
+# Function to download new wallpapers
+download_wallpapers() {
+    if [[ -x "$WALLPAPER_SCRIPT" ]]; then
+        # Download 2 pages of wallpapers
+        "$WALLPAPER_SCRIPT" 1 2 >/dev/null 2>&1
+    fi
+}
+
+# Ensure backgrounds directory exists
+mkdir -p "$BACKGROUNDS_DIR"
+
+# Get list of backgrounds
+mapfile -d '' -t BACKGROUNDS < <(find -L "$BACKGROUNDS_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print0 | sort -z)
 TOTAL=${#BACKGROUNDS[@]}
 
+# Check if we need to download more wallpapers
+if [[ $TOTAL -lt $MIN_WALLPAPERS ]]; then
+    download_wallpapers
+    # Refresh the list after download
+    mapfile -d '' -t BACKGROUNDS < <(find -L "$BACKGROUNDS_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print0 | sort -z)
+    TOTAL=${#BACKGROUNDS[@]}
+fi
+
 if [[ $TOTAL -eq 0 ]]; then
-  notify-send "No background was found for theme" -t 2000
-  pkill -x swaybg
-  setsid uwsm-app -- swaybg --color '#000000' >/dev/null 2>&1 &
+    pkill -x swaybg
+    setsid uwsm-app -- swaybg --color '#000000' >/dev/null 2>&1 &
 else
-  # Get current background from symlink
-  if [[ -L "$CURRENT_BACKGROUND_LINK" ]]; then
-    CURRENT_BACKGROUND=$(readlink "$CURRENT_BACKGROUND_LINK")
-  else
-    # Default to first background if no symlink exists
-    CURRENT_BACKGROUND=""
-  fi
-
-  # Find current background index
-  INDEX=-1
-  for i in "${!BACKGROUNDS[@]}"; do
-    if [[ "${BACKGROUNDS[$i]}" == "$CURRENT_BACKGROUND" ]]; then
-      INDEX=$i
-      break
+    # Get current background from symlink
+    if [[ -L "$CURRENT_BACKGROUND_LINK" ]]; then
+        CURRENT_BACKGROUND=$(readlink "$CURRENT_BACKGROUND_LINK")
+    else
+        # Default to first background if no symlink exists
+        CURRENT_BACKGROUND=""
     fi
-  done
 
-  # Get next background (wrap around)
-  if [[ $INDEX -eq -1 ]]; then
-    # Use the first background when no match was found
-    NEW_BACKGROUND="${BACKGROUNDS[0]}"
-  else
-    NEXT_INDEX=$(((INDEX + 1) % TOTAL))
-    NEW_BACKGROUND="${BACKGROUNDS[$NEXT_INDEX]}"
-  fi
+    # Find current background index
+    INDEX=-1
+    for i in "${!BACKGROUNDS[@]}"; do
+        if [[ "${BACKGROUNDS[$i]}" == "$CURRENT_BACKGROUND" ]]; then
+            INDEX=$i
+            break
+        fi
+    done
 
-  # Set new background symlink
-  ln -nsf "$NEW_BACKGROUND" "$CURRENT_BACKGROUND_LINK"
+    # Get next background (wrap around)
+    if [[ $INDEX -eq -1 ]]; then
+        # Use the first background when no match was found
+        NEW_BACKGROUND="${BACKGROUNDS[0]}"
+    else
+        NEXT_INDEX=$(((INDEX + 1) % TOTAL))
+        NEW_BACKGROUND="${BACKGROUNDS[$NEXT_INDEX]}"
+        
+        # If we've cycled back to the first wallpaper, download more
+        if [[ $NEXT_INDEX -eq 0 ]]; then
+            download_wallpapers &  # Download in background
+        fi
+    fi
 
-  # Relaunch swaybg
-  pkill -x swaybg
-  setsid uwsm-app -- swaybg -i "$CURRENT_BACKGROUND_LINK" -m fill >/dev/null 2>&1 &
+    # Set new background symlink
+    ln -nsf "$NEW_BACKGROUND" "$CURRENT_BACKGROUND_LINK"
+
+    # Relaunch swaybg
+    pkill -x swaybg
+    setsid uwsm-app -- swaybg -i "$CURRENT_BACKGROUND_LINK" -m fill >/dev/null 2>&1 &
 fi
