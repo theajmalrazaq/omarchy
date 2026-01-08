@@ -21,7 +21,9 @@ def refill():
                     html = r.read().decode('utf-8')
                 links = re.findall(r'href="(/images/wallpapers/[^"]+-\d+\.(?:png|jpg|jpeg))"', html)
                 for path in links:
-                    img_id = re.search(r'-(\d+)\.', path).group(1)
+                    match = re.search(r'-(\d+)\.', path)
+                    if not match: continue
+                    img_id = match.group(1)
                     if img_id not in used and downloaded < 5:
                         f = DIR / f"{time.time_ns()}-{Path(path).name}"
                         tmp = f.with_suffix(f.suffix + ".part")
