@@ -85,14 +85,17 @@ show_learn_menu() {
   esac
 }
 
+
 show_trigger_menu() {
-  case $(menu "Trigger" "  Capture\n  Share\n󰔎  Toggle") in
+  case $(menu "Trigger" "  Capture\n  Share\n󱘖  Rev Hotspot\n󰔎  Toggle") in
   *Capture*) show_capture_menu ;;
   *Share*) show_share_menu ;;
+  *Hotspot*) present_terminal omarchy-rev-hotspot ;;
   *Toggle*) show_toggle_menu ;;
   *) show_main_menu ;;
   esac
 }
+
 
 show_capture_menu() {
   case $(menu "Capture" "  Screenshot\n  Screenrecord\n󰃉  Color") in
