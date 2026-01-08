@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Simple launcher for gnirehtet using system-installed binary
+
+# Check if gnirehtet exists
+if ! command -v gnirehtet >/dev/null 2>&1; then
+    echo "gnirehtet is not installed or not in PATH"
+    exit 1
+fi
+
+# Check if ADB exists
+if ! command -v adb >/dev/null 2>&1; then
+    echo "adb not found. Install android-tools-adb first."
+    exit 1
+fi
+
+# Check connected device
+DEVICE=$(adb devices | awk 'NR==2 {print $1}')
+if [ -z "$DEVICE" ] || [ "$DEVICE" = "device" ]; then
+    echo "No Android device detected. Connect USB and enable USB debugging."
+    exit 1
+fi
+
+echo "Starting gnirehtet for: $DEVICE"
+
+# Start relay and client
+gnirehtet run
