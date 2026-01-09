@@ -4,6 +4,7 @@ LOOKNFEEL_CONF="$HOME/.config/hypr/looknfeel.conf"
 WALKER_CSS="$HOME/.local/share/omarchy/default/walker/themes/omarchy-default/style.css"
 HYPRLOCK_CONF="$HOME/.config/hypr/hyprlock.conf"
 MAKO_CONF="$HOME/.config/mako/config"
+SWAYOSD_CSS="$HOME/.config/swayosd/style.css"
 
 get_current_rounding() {
   if [[ ! -f "$LOOKNFEEL_CONF" ]]; then
@@ -114,11 +115,48 @@ modify_mako() {
   makoctl reload
 }
 
+modify_swayosd() {
+  if [[ ! -f "$SWAYOSD_CSS" ]]; then
+    echo "Error: File not found: $SWAYOSD_CSS" >&2
+    exit 1
+  fi
+
+  # Check if window selector exists
+  if ! grep -q "^window {" "$SWAYOSD_CSS"; then
+    # Add the selector if missing
+    echo -e "\nwindow {\n  border-radius: ${NEW}px;\n}" >>"$SWAYOSD_CSS"
+  else
+    # Modify or add border-radius inside the selector
+    if sed -n "/^window {/,/}/p" "$SWAYOSD_CSS" | grep -q "border-radius:"; then
+      sed -i "/^window {/,/}/ s/border-radius: .*/border-radius: ${NEW}px;/" "$SWAYOSD_CSS"
+    else
+      sed -i "/^window {/a \  border-radius: ${NEW}px;" "$SWAYOSD_CSS"
+    fi
+  fi
+
+  # Check if progressbar selector exists
+  if ! grep -q "^progressbar {" "$SWAYOSD_CSS"; then
+    # Add the selector if missing
+    echo -e "\nprogressbar {\n  border-radius: ${NEW}px;\n}" >>"$SWAYOSD_CSS"
+  else
+    # Modify or add border-radius inside the selector
+    if sed -n "/^progressbar {/,/}/p" "$SWAYOSD_CSS" | grep -q "border-radius:"; then
+      sed -i "/^progressbar {/,/}/ s/border-radius: .*/border-radius: ${NEW}px;/" "$SWAYOSD_CSS"
+    else
+      sed -i "/^progressbar {/a \  border-radius: ${NEW}px;" "$SWAYOSD_CSS"
+    fi
+  fi
+
+  pkill swayosd-server
+  nohup swayosd-server >/dev/null 2>&1 &
+}
+
 # Run modifications
 modify_looknfeel
 modify_walker_css
 modify_hyprlock
 modify_mako
+modify_swayosd
 if [[ "$CURRENT" -gt 0 ]]; then
   notify-send "■   Disabled rounded edges"
 else

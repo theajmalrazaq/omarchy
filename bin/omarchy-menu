@@ -140,6 +140,7 @@ show_toggle_menu() {
   *Nightlight*) omarchy-toggle-nightlight ;;
   *Idle*) omarchy-toggle-idle ;;
   *Bar*) omarchy-toggle-waybar ;;
+  *Rounded*) omarchy-toggle-rounded-edges ;;
   *) show_trigger_menu ;;
   esac
 }
