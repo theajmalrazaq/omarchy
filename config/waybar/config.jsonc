@@ -4,10 +4,11 @@
   "position": "top",
   "spacing": 0,
   "height": 26,
-  "modules-left": ["custom/omarchy", "hyprland/workspaces", "custom/mpris-prev", "mpris", "custom/mpris-next"],
+  "modules-left": ["custom/omarchy", "hyprland/workspaces"],
   "modules-center": ["clock", "custom/update", "custom/screenrecording-indicator"],
   "modules-right": [
-    "group/tray-expander",
+    "custom/mpris-prev", "mpris", "custom/mpris-next",
+    // "group/tray-expander",
     "bluetooth",
     "network",
     "pulseaudio",
@@ -24,10 +25,6 @@
       "3": "3",
       "4": "4",
       "5": "5",
-      "6": "6",
-      "7": "7",
-      "8": "8",
-      "9": "9",
       "active": "󱓻"
     },
     "persistent-workspaces": {
@@ -114,17 +111,17 @@
       "default": ["", "", ""]
     }
   },
-  "group/tray-expander": {
-    "orientation": "inherit",
-    "drawer": {
-      "transition-duration": 600,
-      "children-class": "tray-group-item"
-    },
-    "modules": ["custom/expand-icon", "tray"]
-  },
+  // "group/tray-expander": {
+  //   "orientation": "inherit",
+  //   "drawer": {
+  //     "transition-duration": 600,
+  //     "children-class": "tray-group-item"
+  //   },
+  //   "modules": ["custom/expand-icon", "tray"]
+  // },
   "custom/mpris-prev": {
     "format": "{}",
-    "exec": "playerctl status &>/dev/null && echo '      󰒮' || echo ''",
+    "exec": "status=$(playerctl status 2>/dev/null); [[ \"$status\" == \"Playing\" || \"$status\" == \"Paused\" ]] && echo '      󰒮' || echo ''",
     "interval": 1,
     "on-click": "playerctl previous",
     "tooltip": false
@@ -147,7 +144,7 @@
   },
   "custom/mpris-next": {
     "format": "{}",
-    "exec": "playerctl status &>/dev/null && echo '󰒭  ' || echo ''",
+    "exec": "status=$(playerctl status 2>/dev/null); [[ \"$status\" == \"Playing\" || \"$status\" == \"Paused\" ]] && echo '󰒭  ' || echo ''",
     "interval": 1,
     "on-click": "playerctl next",
     "tooltip": false
