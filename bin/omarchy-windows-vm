@@ -286,19 +286,26 @@ launch_windows() {
     # Wait for RDP to be ready
     echo "Waiting for Windows VM to be ready..."
     WAIT_COUNT=0
+    MAX_ATTEMPTS=90  # 3 minutes timeout
     while ! nc -z 127.0.0.1 3389 2>/dev/null; do
       sleep 2
       WAIT_COUNT=$((WAIT_COUNT + 1))
-      if [ $WAIT_COUNT -gt 60 ]; then  # 2 minutes timeout
+      if [ $WAIT_COUNT -gt $MAX_ATTEMPTS ]; then
         echo "❌ Timeout waiting for RDP!"
         echo "   The VM might still be installing Windows."
         echo "   Check progress at: http://127.0.0.1:8006"
+        echo "   View logs: docker logs omarchy-windows"
         exit 1
+      fi
+      # Show progress every 10 seconds
+      if [ $((WAIT_COUNT % 5)) -eq 0 ]; then
+        echo "   Still waiting... ($((WAIT_COUNT * 2)) seconds elapsed)"
       fi
     done
 
-    # Give it a moment more to fully initialize
-    sleep 5
+    # Give it additional time to fully initialize RDP service
+    echo "RDP port detected, waiting for service to stabilize..."
+    sleep 10
   fi
 
   # Extract credentials from compose file
@@ -338,8 +345,28 @@ To stop: omarchy-windows-vm stop"
   fi
   # If scale is less than 130%, don't set any scale (use default 100)
 
+  # Create a temporary credential file for secure password passing
+  CRED_FILE=$(mktemp)
+  echo "$WIN_PASS" > "$CRED_FILE"
+  chmod 600 "$CRED_FILE"
+
+  # Trap to ensure credential file is cleaned up
+  trap "rm -f '$CRED_FILE'" EXIT
+
   # Connect with RDP in fullscreen (auto-detects resolution)
-  xfreerdp3 /u:"$WIN_USER" /p:"$WIN_PASS" /v:127.0.0.1:3389 -grab-keyboard /sound /microphone /cert:ignore /title:"Windows VM - Omarchy" /dynamic-resolution /gfx:AVC444 /floatbar:sticky:off,default:visible,show:fullscreen $RDP_SCALE
+  # Pass password via stdin for security, disable problematic VAAPI hardware acceleration
+  cat "$CRED_FILE" | xfreerdp3 /u:"$WIN_USER" /from-stdin:force /v:127.0.0.1:3389 \
+    -grab-keyboard /sound /microphone /cert:ignore \
+    /title:"Windows VM - Omarchy" \
+    /dynamic-resolution \
+    /gfx:AVC444 \
+    /floatbar:sticky:off,default:visible,show:fullscreen \
+    /video \
+    /rfx \
+    $RDP_SCALE
+
+  # Clean up credential file
+  rm -f "$CRED_FILE"
 
   # After RDP closes, stop the container unless --keep-alive was specified
   if [ "$KEEP_ALIVE" = false ]; then
