@@ -23,5 +23,20 @@ fi
 
 echo "Starting gnirehtet for: $DEVICE"
 
+# Check if gnirehtet is already running
+GNIREHTET_PID=$(pgrep -f "gnirehtet run")
+if [ -n "$GNIREHTET_PID" ]; then
+    echo "gnirehtet is already running (PID: $GNIREHTET_PID). Stopping it..."
+    kill $GNIREHTET_PID
+    sleep 1
+    # Force kill if still running
+    if pgrep -f "gnirehtet run" >/dev/null 2>&1; then
+        echo "Force killing gnirehtet..."
+        pkill -9 -f "gnirehtet run"
+        sleep 1
+    fi
+    echo "Stopped existing gnirehtet process."
+fi
+
 # Start relay and client
 gnirehtet run
