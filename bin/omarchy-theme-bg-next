@@ -3,7 +3,9 @@
 # Cycles through the background images available
 # Automatically downloads new wallpapers if needed
 
-BACKGROUNDS_DIR="$HOME/.config/omarchy/current/theme/backgrounds/"
+THEME_NAME=$(cat "$HOME/.config/omarchy/current/theme.name" 2>/dev/null)
+THEME_BACKGROUNDS_PATH="$HOME/.config/omarchy/current/theme/backgrounds/"
+USER_BACKGROUNDS_PATH="$HOME/.config/omarchy/backgrounds/$THEME_NAME/"
 CURRENT_BACKGROUND_LINK="$HOME/.config/omarchy/current/background"
 WALLPAPER_SCRIPT="$(dirname "$0")/omarchy-dynamic-wallpaper"  # Path to your wallpaper downloader
 MIN_WALLPAPERS=10  # Minimum number of wallpapers to maintain
